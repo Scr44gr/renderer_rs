@@ -34,7 +34,7 @@ impl Renderer {
             .unwrap();
 
         let color_buffer = vec![0; (display::WINDOW_WIDTH * display::WINDOW_HEIGHT * 3) as usize];
-        let mesh = mesh::Mesh::new_cube();
+        let mesh = mesh::Mesh::load_from_file("./assets/f22.obj");
 
         Renderer {
             sdl_context,
@@ -77,14 +77,14 @@ impl Renderer {
         self.mesh.rotation.x += 0.02;
         self.mesh.rotation.y += 0.02;
         self.mesh.rotation.z += 0.02;
-
-        for i in 0..mesh::N_CUBE_FACES {
-            let cube_face = &mesh::CUBE_FACES[i];
+        let num_faces = self.mesh.faces.len();
+        for i in 0..num_faces {
+            let cube_face = self.mesh.faces[i];
 
             let mut face_vertices: [Vec3; 3] = [Vec3::new(0.0, 0.0, 0.0); 3];
-            face_vertices[0] = mesh::CUBE_VERTICES[cube_face.a - 1];
-            face_vertices[1] = mesh::CUBE_VERTICES[cube_face.b - 1];
-            face_vertices[2] = mesh::CUBE_VERTICES[cube_face.c - 1];
+            face_vertices[0] = self.mesh.vertices[cube_face.a - 1];
+            face_vertices[1] = self.mesh.vertices[cube_face.b - 1];
+            face_vertices[2] = self.mesh.vertices[cube_face.c - 1];
 
 
             let mut projected_triangle: triangle::Triangle = triangle::Triangle {

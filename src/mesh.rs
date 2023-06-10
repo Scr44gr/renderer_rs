@@ -1,72 +1,7 @@
+use std::io::Read;
+
 use crate::triangle::Face;
 use crate::vector;
-
-pub const N_CUBE_VERTICES: usize = 8;
-pub const N_CUBE_FACES: usize = 6 * 2;
-
-pub const CUBE_VERTICES: [vector::Vec3; N_CUBE_VERTICES] = [
-    vector::Vec3 {
-        x: -1.0,
-        y: -1.0,
-        z: -1.0,
-    }, // 1
-    vector::Vec3 {
-        x: -1.0,
-        y: 1.0,
-        z: -1.0,
-    }, // 2
-    vector::Vec3 {
-        x: 1.0,
-        y: 1.0,
-        z: -1.0,
-    }, // 3
-    vector::Vec3 {
-        x: 1.0,
-        y: -1.0,
-        z: -1.0,
-    }, // 4
-    vector::Vec3 {
-        x: 1.0,
-        y: 1.0,
-        z: 1.0,
-    }, // 5
-    vector::Vec3 {
-        x: 1.0,
-        y: -1.0,
-        z: 1.0,
-    }, // 6
-    vector::Vec3 {
-        x: -1.0,
-        y: 1.0,
-        z: 1.0,
-    }, // 7
-    vector::Vec3 {
-        x: -1.0,
-        y: -1.0,
-        z: 1.0,
-    }, // 8
-];
-
-pub const CUBE_FACES: [Face; N_CUBE_FACES] = [
-    // front
-    Face { a: 1, b: 2, c: 3 },
-    Face { a: 1, b: 3, c: 4 },
-    // right
-    Face { a: 4, b: 3, c: 5 },
-    Face { a: 4, b: 5, c: 6 },
-    // back
-    Face { a: 6, b: 5, c: 7 },
-    Face { a: 6, b: 7, c: 8 },
-    // left
-    Face { a: 8, b: 7, c: 2 },
-    Face { a: 8, b: 2, c: 1 },
-    // top
-    Face { a: 7, b: 5, c: 3 },
-    Face { a: 7, b: 3, c: 2 },
-    // bottom
-    Face { a: 8, b: 1, c: 4 },
-    Face { a: 8, b: 4, c: 6 },
-];
 
 pub struct Mesh {
     pub vertices: Vec<vector::Vec3>,
@@ -76,16 +11,47 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    pub fn new_cube() -> Mesh {
+    pub fn load_from_file(filename: &str) -> Mesh {
         let mut vertices: Vec<vector::Vec3> = Vec::new();
         let mut faces: Vec<Face> = Vec::new();
 
-        for i in 0..N_CUBE_VERTICES {
-            vertices.push(CUBE_VERTICES[i]);
-        }
+        let mut file = std::fs::File::open(filename).unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
 
-        for i in 0..N_CUBE_FACES {
-            faces.push(CUBE_FACES[i]);
+        let lines = contents.lines();
+
+        for line in lines {
+            let mut words = line.split_whitespace();
+            let word = words.next().unwrap();
+
+            match word {
+                "v" => {
+                    // v 0.000000 2.000000 2.000000
+                    let x: f32 = words.next().unwrap().parse().unwrap();
+                    let y: f32 = words.next().unwrap().parse().unwrap();
+                    let z: f32 = words.next().unwrap().parse().unwrap();
+                    vertices.push(vector::Vec3::new(x, y, z));
+                }
+                "f" => {
+                    // f 1/1/1 5/2/1 4/3/1
+                    let mut face: Face = Face::new(0, 0, 0);
+                    let mut i = 0;
+                    for word in words {
+                        let mut indices = word.split('/');
+                        let index: usize = indices.next().unwrap().parse().unwrap();
+                        match i {
+                            0 => face.a = index,
+                            1 => face.b = index,
+                            2 => face.c = index,
+                            _ => {}
+                        }
+                        i += 1;
+                    }
+                    faces.push(face);
+                }
+                _ => {}
+            }
         }
 
         Mesh {

@@ -23,9 +23,12 @@ impl Mesh {
 
         for line in lines {
             let mut words = line.split_whitespace();
-            let word = words.next().unwrap();
+            let result = words.next();
+            if result.is_none() {
+                continue;
+            }
 
-            match word {
+            match result.unwrap() {
                 "v" => {
                     // v 0.000000 2.000000 2.000000
                     let x: f32 = words.next().unwrap().parse().unwrap();

@@ -42,7 +42,7 @@ impl Renderer {
             color_buffer,
             is_running: true,
             fov_factor: 700.0,
-            camera_position: Vec3::new(0.0, 5.0, -5.0),
+            camera_position: Vec3::new(0.0, 0.0, 0.0),
             triangles_to_render: Vec::new(),
             mesh,
         }
@@ -86,21 +86,46 @@ impl Renderer {
             face_vertices[1] = self.mesh.vertices[cube_face.b - 1];
             face_vertices[2] = self.mesh.vertices[cube_face.c - 1];
 
-
             let mut projected_triangle: triangle::Triangle = triangle::Triangle {
                 points: [vector::Vec2 { x: 0.0, y: 0.0 }; 3],
             };
+            let mut transformed_vertices: [Vec3; 3] = [Vec3::new(0.0, 0.0, 0.0); 3];
 
+            // Transforming vertices
             for j in 0..3 {
                 let mut transformed_vertex = face_vertices[j];
                 transformed_vertex = transformed_vertex.rotate_x(self.mesh.rotation.x);
                 transformed_vertex = transformed_vertex.rotate_y(self.mesh.rotation.y);
                 transformed_vertex = transformed_vertex.rotate_z(self.mesh.rotation.z);
 
-                transformed_vertex.z -= self.camera_position.z;
-                let mut projected_point = self.project(transformed_vertex);
+                transformed_vertex.z += 5.0;
+                transformed_vertices[j] = transformed_vertex;
+            }
 
-                // Scale and translate the projected point to the center of the screen
+            // Applying backface culling
+            // Getting vectors
+            let vector_a = transformed_vertices[0]; //     A
+            let vector_b = transformed_vertices[1]; //   /   \
+            let vector_c = transformed_vertices[2]; //  C-----B
+
+            // Calculate Normal
+            let vector_ab = vector_b - vector_a;
+            let vector_ac = vector_c - vector_a;
+            let normal = vector_ab.cross(vector_ac);
+
+            // Calculate Camera Ray
+            let camera_ray = self.camera_position - vector_a;
+
+            //  Calculate Camera Ray Dot Normal
+            let dot_camera = normal.dot(camera_ray);
+            if dot_camera < 0.0 {
+                continue;
+            }
+
+            // Projecting 3D points to 2D
+            for j in 0..3 {
+                let mut projected_point = self.project(transformed_vertices[j]);
+
                 projected_point.x += display::WINDOW_WIDTH as f32 / 2.0;
                 projected_point.y += display::WINDOW_HEIGHT as f32 / 2.0;
                 projected_triangle.points[j] = projected_point;

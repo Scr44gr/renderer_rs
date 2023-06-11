@@ -1,3 +1,9 @@
+use std::ops::Add;
+use std::ops::Div;
+use std::ops::Mul;
+use std::ops::Neg;
+use std::ops::Sub;
+
 #[derive(Debug, Copy, Clone)]
 pub struct Vec2 {
     pub(crate) x: f32,
@@ -14,36 +20,63 @@ impl Vec2 {
         self.x * other.x + self.y * other.y
     }
 
-    pub fn sub(&self, other: Vec2) -> Vec2 {
+    pub fn len(&self) -> f32 {
+        self.dot(*self).sqrt()
+    }
+}
+
+impl Sub for Vec2 {
+    type Output = Vec2;
+
+    fn sub(self, other: Vec2) -> Vec2 {
         Vec2 {
             x: self.x - other.x,
             y: self.y - other.y,
         }
     }
+}
 
-    pub fn add(&self, other: Vec2) -> Vec2 {
+impl Add for Vec2 {
+    type Output = Vec2;
+
+    fn add(self, other: Vec2) -> Vec2 {
         Vec2 {
             x: self.x + other.x,
             y: self.y + other.y,
         }
     }
+}
 
-    pub fn mul(&self, scalar: f32) -> Vec2 {
+impl Mul<f32> for Vec2 {
+    type Output = Vec2;
+
+    fn mul(self, scalar: f32) -> Vec2 {
         Vec2 {
             x: self.x * scalar,
             y: self.y * scalar,
         }
     }
+}
 
-    pub fn div(&self, scalar: f32) -> Vec2 {
+impl Div<f32> for Vec2 {
+    type Output = Vec2;
+
+    fn div(self, scalar: f32) -> Vec2 {
         Vec2 {
             x: self.x / scalar,
             y: self.y / scalar,
         }
     }
+}
 
-    pub fn len(&self) -> f32 {
-        self.dot(*self).sqrt()
+impl Neg for Vec2 {
+    type Output = Vec2;
+
+    fn neg(self) -> Vec2 {
+        Vec2 {
+            x: -self.x,
+            y: -self.y,
+        }
     }
 }
 
@@ -82,38 +115,6 @@ impl Vec3 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
-    pub fn sub(&self, other: Vec3) -> Vec3 {
-        Vec3 {
-            x: self.x - other.x,
-            y: self.y - other.y,
-            z: self.z - other.z,
-        }
-    }
-
-    pub fn add(&self, other: Vec3) -> Vec3 {
-        Vec3 {
-            x: self.x + other.x,
-            y: self.y + other.y,
-            z: self.z + other.z,
-        }
-    }
-
-    pub fn mul(&self, scalar: f32) -> Vec3 {
-        Vec3 {
-            x: self.x * scalar,
-            y: self.y * scalar,
-            z: self.z * scalar,
-        }
-    }
-
-    pub fn div(&self, scalar: f32) -> Vec3 {
-        Vec3 {
-            x: self.x / scalar,
-            y: self.y / scalar,
-            z: self.z / scalar,
-        }
-    }
-
     pub fn len(&self) -> f32 {
         self.dot(*self).sqrt()
     }
@@ -129,5 +130,64 @@ impl Vec3 {
             z: self.x * other.y - self.y * other.x,
         }
     }
+}
 
+impl Sub for Vec3 {
+    type Output = Vec3;
+
+    fn sub(self, other: Vec3) -> Vec3 {
+        Vec3 {
+            x: self.x - other.x,
+            y: self.y - other.y,
+            z: self.z - other.z,
+        }
+    }
+}
+
+impl Add for Vec3 {
+    type Output = Vec3;
+
+    fn add(self, other: Vec3) -> Vec3 {
+        Vec3 {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+        }
+    }
+}
+
+impl Mul<f32> for Vec3 {
+    type Output = Vec3;
+
+    fn mul(self, scalar: f32) -> Vec3 {
+        Vec3 {
+            x: self.x * scalar,
+            y: self.y * scalar,
+            z: self.z * scalar,
+        }
+    }
+}
+
+impl Div<f32> for Vec3 {
+    type Output = Vec3;
+
+    fn div(self, scalar: f32) -> Vec3 {
+        Vec3 {
+            x: self.x / scalar,
+            y: self.y / scalar,
+            z: self.z / scalar,
+        }
+    }
+}
+
+impl Neg for Vec3 {
+    type Output = Vec3;
+
+    fn neg(self) -> Vec3 {
+        Vec3 {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+        }
+    }
 }

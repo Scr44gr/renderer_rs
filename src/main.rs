@@ -34,7 +34,7 @@ impl Renderer {
             .unwrap();
 
         let color_buffer = vec![0; (display::WINDOW_WIDTH * display::WINDOW_HEIGHT * 3) as usize];
-        let mesh = mesh::Mesh::load_from_file("./assets/f22.obj");
+        let mesh = mesh::Mesh::load_from_file("./assets/cube.obj");
 
         Renderer {
             sdl_context,
@@ -109,16 +109,16 @@ impl Renderer {
             let vector_c = transformed_vertices[2]; //  C-----B
 
             // Calculate Normal
-            let vector_ab = vector_b - vector_a;
-            let vector_ac = vector_c - vector_a;
-            let normal = vector_ab.cross(vector_ac);
+            let vector_ab = (vector_b - vector_a).normalize();
+            let vector_ac = (vector_c - vector_a).normalize();
+            let normal = vector_ab.cross(vector_ac).normalize();
 
             // Calculate Camera Ray
             let camera_ray = self.camera_position - vector_a;
 
             //  Calculate Camera Ray Dot Normal
-            let dot_camera = normal.dot(camera_ray);
-            if dot_camera < 0.0 {
+            let dot_normal_camera = normal.dot(camera_ray);
+            if dot_normal_camera < 0.0 {
                 continue;
             }
 

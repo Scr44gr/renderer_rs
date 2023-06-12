@@ -97,15 +97,6 @@ pub fn draw_triangle(color_buffer: &mut Vec<u8>, points: [Vec2; 3], color: sdl2:
             p1.y as i32,
             color,
         );
-        // draw vertex points
-        draw_rect(
-            color_buffer,
-            p0.x as u32,
-            p0.y as u32,
-            4,
-            4,
-            sdl2::pixels::Color::RGBA(255, 0, 0, 255),
-        );
     }
 }
 

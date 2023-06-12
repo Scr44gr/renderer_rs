@@ -139,10 +139,17 @@ impl Renderer {
 
         for i in 0..num_triangles {
             let triangle = &self.triangles_to_render[i];
+
+            triangle::draw_filled_triangle(
+                &mut self.color_buffer,
+                triangle.points,
+                sdl2::pixels::Color::RGBA(255, 255, 255, 255),
+            );
+
             display::draw_triangle(
                 &mut self.color_buffer,
                 triangle.points,
-                sdl2::pixels::Color::RGBA(0, 150, 0, 255),
+                sdl2::pixels::Color::RGBA(0, 0, 0, 255),
             );
         }
 

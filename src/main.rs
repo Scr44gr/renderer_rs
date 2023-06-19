@@ -22,6 +22,8 @@ struct Renderer {
     camera_position: Vec3,
     triangles_to_render: Vec<triangle::Triangle>,
     mesh: mesh::Mesh,
+    render_method: display::RenderMethod,
+    cull_method: display::CullMethod,
 }
 
 impl Renderer {
@@ -44,7 +46,9 @@ impl Renderer {
             fov_factor: 700.0,
             camera_position: Vec3::new(0.0, 0.0, 0.0),
             triangles_to_render: Vec::new(),
-            mesh,
+            mesh: mesh,
+            render_method: display::RenderMethod::Wireframe,
+            cull_method: display::CullMethod::None,
         }
     }
 
@@ -64,11 +68,23 @@ impl Renderer {
                 Event::MouseWheel { y, .. } => {
                     self.camera_position.z += y as f32;
                 }
-
                 Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
+                    keycode: Some(keycode),
                     ..
-                } => self.is_running = false,
+                } => match keycode {
+                    Keycode::Escape => self.is_running = false,
+                    // Render methods
+                    Keycode::Kp1 => self.render_method = display::RenderMethod::Wireframe,
+                    Keycode::Kp2 => self.render_method = display::RenderMethod::WireframeVertex,
+                    Keycode::Kp3 => self.render_method = display::RenderMethod::FillTriangle,
+                    Keycode::Kp4 => {
+                        self.render_method = display::RenderMethod::FillTriangleWireframe
+                    }
+                    // Cull methods
+                    Keycode::Kp5 => self.cull_method = display::CullMethod::None,
+                    Keycode::Kp6 => self.cull_method = display::CullMethod::CULL_BACKFACE,
+                    _ => {}
+                },
                 _ => {}
             }
         }
@@ -102,24 +118,26 @@ impl Renderer {
                 transformed_vertices[j] = transformed_vertex;
             }
 
-            // Applying backface culling
-            // Getting vectors
-            let vector_a = transformed_vertices[0]; //     A
-            let vector_b = transformed_vertices[1]; //   /   \
-            let vector_c = transformed_vertices[2]; //  C-----B
+            if self.cull_method == display::CullMethod::CULL_BACKFACE {
+                // Applying backface culling
+                // Getting vectors
+                let vector_a = transformed_vertices[0]; //     A
+                let vector_b = transformed_vertices[1]; //   /   \
+                let vector_c = transformed_vertices[2]; //  C-----B
 
-            // Calculate Normal
-            let vector_ab = (vector_b - vector_a).normalize();
-            let vector_ac = (vector_c - vector_a).normalize();
-            let normal = vector_ab.cross(vector_ac).normalize();
+                // Calculate Normal
+                let vector_ab = (vector_b - vector_a).normalize();
+                let vector_ac = (vector_c - vector_a).normalize();
+                let normal = vector_ab.cross(vector_ac).normalize();
 
-            // Calculate Camera Ray
-            let camera_ray = self.camera_position - vector_a;
+                // Calculate Camera Ray
+                let camera_ray = self.camera_position - vector_a;
 
-            //  Calculate Camera Ray Dot Normal
-            let dot_normal_camera = normal.dot(camera_ray);
-            if dot_normal_camera < 0.0 {
-                continue;
+                //  Calculate Camera Ray Dot Normal
+                let dot_normal_camera = normal.dot(camera_ray);
+                if dot_normal_camera < 0.0 {
+                    continue;
+                }
             }
 
             // Projecting 3D points to 2D
@@ -140,17 +158,48 @@ impl Renderer {
         for i in 0..num_triangles {
             let triangle = &self.triangles_to_render[i];
 
-            triangle::draw_filled_triangle(
-                &mut self.color_buffer,
-                triangle.points,
-                sdl2::pixels::Color::RGBA(255, 255, 255, 255),
-            );
-
-            display::draw_triangle(
-                &mut self.color_buffer,
-                triangle.points,
-                sdl2::pixels::Color::RGBA(0, 0, 0, 255),
-            );
+            match self.render_method {
+                // Draw wireframe triangle
+                display::RenderMethod::Wireframe => {
+                    display::draw_triangle(
+                        &mut self.color_buffer,
+                        triangle.points,
+                        sdl2::pixels::Color::RGBA(255, 255, 255, 255),
+                        false,
+                    );
+                }
+                // Draw wireframe with vertex points
+                display::RenderMethod::WireframeVertex => {
+                    display::draw_triangle(
+                        &mut self.color_buffer,
+                        triangle.points,
+                        sdl2::pixels::Color::RGBA(255, 255, 255, 255),
+                        true,
+                    );
+                }
+                // Draw filled triangle
+                display::RenderMethod::FillTriangle => {
+                    triangle::draw_filled_triangle(
+                        &mut self.color_buffer,
+                        triangle.points,
+                        sdl2::pixels::Color::RGBA(255, 255, 255, 255),
+                    );
+                }
+                // Draw filled triangle and then draw wireframe on top
+                display::RenderMethod::FillTriangleWireframe => {
+                    triangle::draw_filled_triangle(
+                        &mut self.color_buffer,
+                        triangle.points,
+                        sdl2::pixels::Color::RGBA(255, 255, 255, 255),
+                    );
+                    display::draw_triangle(
+                        &mut self.color_buffer,
+                        triangle.points,
+                        sdl2::pixels::Color::RGBA(0, 0, 0, 255),
+                        false,
+                    );
+                }
+            }
         }
 
         self.triangles_to_render.clear();

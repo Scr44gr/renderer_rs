@@ -5,6 +5,22 @@ use sdl2::video::{Window, WindowBuildError};
 
 use crate::vector::Vec2;
 
+// Render Methods
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RenderMethod {
+    Wireframe,             // default
+    WireframeVertex,       // wireframe with vertex
+    FillTriangle,          // fill triangle
+    FillTriangleWireframe, // fill triangle with wireframe
+}
+
+// CULL METHODS
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CullMethod {
+    None, // default
+    CULL_BACKFACE,
+}
+
 pub const WINDOW_WIDTH: u32 = 800;
 pub const WINDOW_HEIGHT: u32 = 600;
 pub const FRAMES_PER_SECOND: u32 = 30;
@@ -85,7 +101,12 @@ pub fn draw_grid(color_buffer: &mut Vec<u8>, size: usize) {
     }
 }
 
-pub fn draw_triangle(color_buffer: &mut Vec<u8>, points: [Vec2; 3], color: sdl2::pixels::Color) {
+pub fn draw_triangle(
+    color_buffer: &mut Vec<u8>,
+    points: [Vec2; 3],
+    color: sdl2::pixels::Color,
+    allow_drawing_vertex: bool,
+) {
     for i in 0..3 {
         let p0 = points[i];
         let p1 = points[(i + 1) % 3];
@@ -97,6 +118,16 @@ pub fn draw_triangle(color_buffer: &mut Vec<u8>, points: [Vec2; 3], color: sdl2:
             p1.y as i32,
             color,
         );
+        if allow_drawing_vertex {
+            draw_rect(
+                color_buffer,
+                p0.x as u32 - 2,
+                p0.y as u32 - 2,
+                4,
+                4,
+                sdl2::pixels::Color::RGBA(255, 0, 0, 255),
+            );
+        }
     }
 }
 

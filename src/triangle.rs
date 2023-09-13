@@ -3,6 +3,8 @@ use crate::{display::draw_line, vector::Vec2};
 #[derive(Debug, Copy, Clone)]
 pub struct Triangle {
     pub(crate) points: [Vec2; 3],
+    pub(crate) color: sdl2::pixels::Color,
+    pub(crate) avg_depth: f32,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -10,19 +12,24 @@ pub struct Face {
     pub(crate) a: usize,
     pub(crate) b: usize,
     pub(crate) c: usize,
+    pub(crate) color: sdl2::pixels::Color,
 }
 
 #[allow(dead_code)]
 impl Triangle {
-    pub fn new(points: [Vec2; 3]) -> Triangle {
-        Triangle { points }
+    pub fn new(points: [Vec2; 3], color: sdl2::pixels::Color, avg_depth: f32) -> Triangle {
+        Triangle {
+            points,
+            color,
+            avg_depth,
+        }
     }
 }
 
 #[allow(dead_code)]
 impl Face {
-    pub fn new(a: usize, b: usize, c: usize) -> Face {
-        Face { a, b, c }
+    pub fn new(a: usize, b: usize, c: usize, color: sdl2::pixels::Color) -> Face {
+        Face { a, b, c, color }
     }
 }
 
@@ -32,7 +39,8 @@ pub fn draw_filled_triangle(
     color: sdl2::pixels::Color,
 ) {
     let mut points = points;
-    points.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
+
+    points.sort_by(|a, b: &Vec2| a.y.partial_cmp(&b.y).unwrap());
 
     let x0 = points[0].x as i32;
     let y0 = points[0].y as i32;

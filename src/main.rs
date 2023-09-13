@@ -7,11 +7,14 @@ use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::Sdl;
 use std::time::Duration;
-use vector::Vec3;
+use vector::{Vec2, Vec3, Vec4};
+use matrix::Matrix;
 mod display;
 mod mesh;
 mod triangle;
 mod vector;
+mod matrix;
+
 
 struct Renderer {
     sdl_context: Sdl,
@@ -31,12 +34,14 @@ impl Renderer {
         let canvas = window
             .into_canvas()
             .present_vsync()
+            .accelerated()
             .build()
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let color_buffer = vec![0; (display::WINDOW_WIDTH * display::WINDOW_HEIGHT * 3) as usize];
-        let mesh = mesh::Mesh::load_from_file("./assets/cube.obj");
+        let color_buffer = vec![0; (display::WINDOW_WIDTH * display::WINDOW_HEIGHT * 5) as usize];
+        //let mesh = mesh::Mesh::load_from_file("./assets/f22.obj");
+        let mesh = mesh::Mesh::new_cube();
 
         Renderer {
             sdl_context,
@@ -65,9 +70,6 @@ impl Renderer {
         for event in events.poll_iter() {
             match event {
                 Event::Quit { .. } => self.is_running = false,
-                Event::MouseWheel { y, .. } => {
-                    self.camera_position.z += y as f32;
-                }
                 Event::KeyDown {
                     keycode: Some(keycode),
                     ..
@@ -77,12 +79,10 @@ impl Renderer {
                     Keycode::Kp1 => self.render_method = display::RenderMethod::Wireframe,
                     Keycode::Kp2 => self.render_method = display::RenderMethod::WireframeVertex,
                     Keycode::Kp3 => self.render_method = display::RenderMethod::FillTriangle,
-                    Keycode::Kp4 => {
-                        self.render_method = display::RenderMethod::FillTriangleWireframe
-                    }
+                    Keycode::Kp4 => self.render_method = display::RenderMethod::FillTriangleWireframe,
                     // Cull methods
                     Keycode::Kp5 => self.cull_method = display::CullMethod::None,
-                    Keycode::Kp6 => self.cull_method = display::CullMethod::CULL_BACKFACE,
+                    Keycode::Kp6 => self.cull_method = display::CullMethod::CullBackface,
                     _ => {}
                 },
                 _ => {}
@@ -90,9 +90,21 @@ impl Renderer {
         }
     }
     pub fn update(&mut self) {
+        // change the mesh roration/scale values per animation frame
         self.mesh.rotation.x += 0.02;
         self.mesh.rotation.y += 0.02;
-        self.mesh.rotation.z += 0.02;
+        self.mesh.rotation.z += 0.01;
+
+        self.mesh.scale.x += 0.02;
+        self.mesh.scale.y += 0.02;
+        // Create Scale matrix that will be used to multiply the mesh vertices
+
+        let mut scale_matrix = Matrix::new().scale(
+            self.mesh.scale.x,
+            self.mesh.scale.y,
+            self.mesh.scale.z,
+        );
+
         let num_faces = self.mesh.faces.len();
         for i in 0..num_faces {
             let cube_face = self.mesh.faces[i];
@@ -102,28 +114,23 @@ impl Renderer {
             face_vertices[1] = self.mesh.vertices[cube_face.b - 1];
             face_vertices[2] = self.mesh.vertices[cube_face.c - 1];
 
-            let mut projected_triangle: triangle::Triangle = triangle::Triangle {
-                points: [vector::Vec2 { x: 0.0, y: 0.0 }; 3],
-            };
-            let mut transformed_vertices: [Vec3; 3] = [Vec3::new(0.0, 0.0, 0.0); 3];
+            let mut transformed_vertices: [Vec4; 3] = [Vec4::new(0.0, 0.0, 0.0, 0.0); 3];
 
             // Transforming vertices
             for j in 0..3 {
-                let mut transformed_vertex = face_vertices[j];
-                transformed_vertex = transformed_vertex.rotate_x(self.mesh.rotation.x);
-                transformed_vertex = transformed_vertex.rotate_y(self.mesh.rotation.y);
-                transformed_vertex = transformed_vertex.rotate_z(self.mesh.rotation.z);
-
-                transformed_vertex.z += 5.0;
-                transformed_vertices[j] = transformed_vertex;
+                let mut transformed_vertex = Vec4::from_vec3(face_vertices[j]);
+                // use a matrix to scale the vertices
+                transformed_vertex = scale_matrix.multiply(&mut transformed_vertex);
+                transformed_vertex.z += 5.0; 
+                transformed_vertices[j] = transformed_vertex; 
             }
 
-            if self.cull_method == display::CullMethod::CULL_BACKFACE {
+            if self.cull_method == display::CullMethod::CullBackface {
                 // Applying backface culling
                 // Getting vectors
-                let vector_a = transformed_vertices[0]; //     A
-                let vector_b = transformed_vertices[1]; //   /   \
-                let vector_c = transformed_vertices[2]; //  C-----B
+                let vector_a = Vec3::from_vec4(transformed_vertices[0]); //     A
+                let vector_b = Vec3::from_vec4(transformed_vertices[1]); //   /   \
+                let vector_c = Vec3::from_vec4(transformed_vertices[2]); //  C-----B
 
                 // Calculate Normal
                 let vector_ab = (vector_b - vector_a).normalize();
@@ -139,17 +146,29 @@ impl Renderer {
                     continue;
                 }
             }
-
             // Projecting 3D points to 2D
+            let mut projected_points = [Vec2::new(0.0, 0.0); 3];
             for j in 0..3 {
-                let mut projected_point = self.project(transformed_vertices[j]);
+                let mut projected_point = self.project(Vec3::from_vec4(transformed_vertices[j]));
 
                 projected_point.x += display::WINDOW_WIDTH as f32 / 2.0;
                 projected_point.y += display::WINDOW_HEIGHT as f32 / 2.0;
-                projected_triangle.points[j] = projected_point;
+                projected_points[j] = projected_point;
             }
+            // Calculating average depth of triangle
+            let avg_depth =
+                (transformed_vertices[0].z + transformed_vertices[1].z + transformed_vertices[2].z)
+                    / transformed_vertices.len() as f32;
+
+            let projected_triangle: triangle::Triangle = triangle::Triangle {
+                points: projected_points,
+                color: self.mesh.faces[i].color,
+                avg_depth: avg_depth,
+            };
             self.triangles_to_render.push(projected_triangle);
         }
+        // Sorting triangles by depth
+        self.triangles_to_render.sort_by(|a, b| b.avg_depth.partial_cmp(&a.avg_depth).unwrap());
     }
 
     pub fn render(&mut self) {
@@ -182,7 +201,7 @@ impl Renderer {
                     triangle::draw_filled_triangle(
                         &mut self.color_buffer,
                         triangle.points,
-                        sdl2::pixels::Color::RGBA(255, 255, 255, 255),
+                        triangle.color,
                     );
                 }
                 // Draw filled triangle and then draw wireframe on top
@@ -190,7 +209,7 @@ impl Renderer {
                     triangle::draw_filled_triangle(
                         &mut self.color_buffer,
                         triangle.points,
-                        sdl2::pixels::Color::RGBA(255, 255, 255, 255),
+                        triangle.color,
                     );
                     display::draw_triangle(
                         &mut self.color_buffer,

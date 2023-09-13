@@ -93,6 +93,14 @@ impl Vec3 {
         Vec3 { x, y, z }
     }
 
+    pub fn from_vec4(v: Vec4) -> Vec3 {
+        Vec3 {
+            x: v.x,
+            y: v.y,
+            z: v.z,
+        }
+    }
+
     pub fn rotate_x(&self, angle: f32) -> Vec3 {
         let y = self.y * angle.cos() - self.z * angle.sin();
         let z = self.y * angle.sin() + self.z * angle.cos();
@@ -188,6 +196,153 @@ impl Neg for Vec3 {
             x: -self.x,
             y: -self.y,
             z: -self.z,
+        }
+    }
+}
+
+
+#[derive(Debug, Copy, Clone)]
+pub struct Vec4 {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub w: f32,
+}
+
+
+#[allow(dead_code)]
+impl Vec4 {
+    pub fn new(x: f32, y: f32, z: f32, w: f32) -> Vec4 {
+        Vec4 { x, y, z, w }
+    }
+
+    pub fn from_vec3(v: Vec3) -> Vec4 {
+        Vec4 {
+            x: v.x,
+            y: v.y,
+            z: v.z,
+            w: 1.0,
+        }
+    }
+    pub fn dot(&self, other: Vec4) -> f32 {
+        self.x * other.x + self.y * other.y + self.z * other.z + self.w * other.w
+    }
+
+    pub fn len(&self) -> f32 {
+        self.dot(*self).sqrt()
+    }
+
+    pub fn normalize(&self) -> Vec4 {
+        self.div(self.len())
+    }
+
+    pub fn rotate_x(&self, angle: f32) -> Vec4 {
+        let y = self.y * angle.cos() - self.z * angle.sin();
+        let z = self.y * angle.sin() + self.z * angle.cos();
+        Vec4 {
+            x: self.x,
+            y,
+            z,
+            w: self.w,
+        }
+    }
+
+    pub fn rotate_y(&self, angle: f32) -> Vec4 {
+        let x = self.x * angle.cos() + self.z * angle.sin();
+        let z = -self.x * angle.sin() + self.z * angle.cos();
+        Vec4 {
+            x,
+            y: self.y,
+            z,
+            w: self.w,
+        }
+    }
+
+    pub fn rotate_z(&self, angle: f32) -> Vec4 {
+        let x = self.x * angle.cos() - self.y * angle.sin();
+        let y = self.x * angle.sin() + self.y * angle.cos();
+        Vec4 {
+            x,
+            y,
+            z: self.z,
+            w: self.w,
+        }
+    }
+
+
+    pub fn cross(&self, other: Vec4) -> Vec4 {
+        Vec4 {
+            x: self.y * other.z - self.z * other.y,
+            y: self.z * other.x - self.x * other.z,
+            z: self.x * other.y - self.y * other.x,
+            w: 1.0,
+        }
+    }
+
+
+}
+
+impl Sub for Vec4 {
+    type Output = Vec4;
+
+    fn sub(self, other: Vec4) -> Vec4 {
+        Vec4 {
+            x: self.x - other.x,
+            y: self.y - other.y,
+            z: self.z - other.z,
+            w: self.w - other.w,
+        }
+    }
+}
+
+impl Add for Vec4 {
+    type Output = Vec4;
+
+    fn add(self, other: Vec4) -> Vec4 {
+        Vec4 {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+            w: self.w + other.w,
+        }
+    }
+}
+
+impl Mul<f32> for Vec4 {
+    type Output = Vec4;
+
+    fn mul(self, scalar: f32) -> Vec4 {
+        Vec4 {
+            x: self.x * scalar,
+            y: self.y * scalar,
+            z: self.z * scalar,
+            w: self.w * scalar,
+        }
+    }
+}
+
+impl Div<f32> for Vec4 {
+    type Output = Vec4;
+
+    fn div(self, scalar: f32) -> Vec4 {
+        Vec4 {
+            x: self.x / scalar,
+            y: self.y / scalar,
+            z: self.z / scalar,
+            w: self.w / scalar,
+        }
+    }
+}
+
+impl Neg for Vec4 {
+    type Output = Vec4;
+
+    fn neg(self) -> Vec4 {
+        Vec4 {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+            w: -self.w,
         }
     }
 }

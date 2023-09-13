@@ -18,12 +18,12 @@ pub enum RenderMethod {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CullMethod {
     None, // default
-    CULL_BACKFACE,
+    CullBackface,
 }
 
-pub const WINDOW_WIDTH: u32 = 800;
-pub const WINDOW_HEIGHT: u32 = 600;
-pub const FRAMES_PER_SECOND: u32 = 30;
+pub const WINDOW_WIDTH: u32 = 1080;
+pub const WINDOW_HEIGHT: u32 = 720;
+pub const FRAMES_PER_SECOND: u32 = 60;
 
 const WINDOW_TITLE: &str = "Renderer Learning";
 

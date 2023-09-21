@@ -19,11 +19,11 @@ mod matrix;
 struct Renderer {
     sdl_context: Sdl,
     canvas: Canvas<Window>,
-    color_buffer: Vec<u8>,
     is_running: bool,
     fov_factor: f32,
-    camera_position: Vec3,
+    color_buffer: Vec<u8>,
     triangles_to_render: Vec<triangle::Triangle>,
+    camera_position: Vec3,
     mesh: mesh::Mesh,
     render_method: display::RenderMethod,
     cull_method: display::CullMethod,
@@ -93,16 +93,30 @@ impl Renderer {
         // change the mesh roration/scale values per animation frame
         self.mesh.rotation.x += 0.02;
         self.mesh.rotation.y += 0.02;
-        self.mesh.rotation.z += 0.01;
+        //self.mesh.rotation.z += 0.01;
+        self.mesh.translation.z = 5.0;
 
-        self.mesh.scale.x += 0.02;
-        self.mesh.scale.y += 0.02;
         // Create Scale matrix that will be used to multiply the mesh vertices
 
         let mut scale_matrix = Matrix::new().scale(
             self.mesh.scale.x,
             self.mesh.scale.y,
             self.mesh.scale.z,
+        );
+
+        let mut translation_matrix = Matrix::new().translate(
+            self.mesh.translation.x,
+            self.mesh.translation.y,
+            self.mesh.translation.z,
+        );
+        let mut rotation_matrix_x = Matrix::new().rotate_x(
+            self.mesh.rotation.x,
+        );
+        let mut rotation_matrix_y = Matrix::new().rotate_y(
+            self.mesh.rotation.y,
+        );
+        let mut rotation_matrix_z = Matrix::new().rotate_z(
+            self.mesh.rotation.z,
         );
 
         let num_faces = self.mesh.faces.len();
@@ -119,9 +133,13 @@ impl Renderer {
             // Transforming vertices
             for j in 0..3 {
                 let mut transformed_vertex = Vec4::from_vec3(face_vertices[j]);
-                // use a matrix to scale the vertices
+                // Use a matrix to scale, rotate, and translate the mesh
                 transformed_vertex = scale_matrix.multiply(&mut transformed_vertex);
-                transformed_vertex.z += 5.0; 
+                transformed_vertex = rotation_matrix_x.multiply(&mut transformed_vertex);
+                transformed_vertex = rotation_matrix_y.multiply(&mut transformed_vertex);
+                transformed_vertex = rotation_matrix_z.multiply(&mut transformed_vertex);
+                transformed_vertex = translation_matrix.multiply(&mut transformed_vertex);
+                // Store transformed vertex
                 transformed_vertices[j] = transformed_vertex; 
             }
 

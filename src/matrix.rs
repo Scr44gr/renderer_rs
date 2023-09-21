@@ -32,6 +32,7 @@ impl Matrix {
         m.data[0][0] = sx;
         m.data[1][1] = sy;
         m.data[2][2] = sz;
+        m.data[3][3] = 1.0;
         m
     }
 
@@ -59,7 +60,18 @@ impl Matrix {
 
         result
     }
-    
+    // Translate matrix
+    pub fn translate(&mut self, tx: f32, ty: f32, tz: f32) -> Matrix {
+        // | 1   0   0   tx |
+        // | 0   1   0   ty |
+        // | 0   0   1   tz |
+        // | 0   0   0   1  |
+        let mut m = Matrix::identity();
+        m.data[3][0] = tx;
+        m.data[3][1] = ty;
+        m.data[3][2] = tz;
+        m
+    }
     /// Transform a vector by this matrix
     pub fn transform(&self, v: &vector::Vec3) -> vector::Vec3 {
         let mut result = vector::Vec3::new(0.0, 0.0, 0.0);
@@ -88,5 +100,44 @@ impl Matrix {
             result.z /= w;
         }
         result
+    }
+
+    pub fn rotate_x(&mut self, angle: f32) -> Matrix {
+        // | 1   0       0       0 |
+        // | 0   cos(a)  sin(a) 0 |
+        // | 0   -sin(a)  cos(a)  0 |
+        // | 0   0       0       1 |
+        let mut m = Matrix::identity();
+        m.data[1][1] = angle.cos();
+        m.data[1][2] = angle.sin();
+        m.data[2][1] = -angle.sin();
+        m.data[2][2] = angle.cos();
+        m
+    }
+
+    pub fn rotate_y(&mut self, angle: f32) -> Matrix {
+        // | cos(a)  0   -sin(a)  0 |
+        // | 0       1   0       0 |
+        // | sin(a) 0   cos(a)  0 |
+        // | 0       0   0       1 |
+        let mut m = Matrix::identity();
+        m.data[0][0] = angle.cos();
+        m.data[0][2] = -angle.sin();
+        m.data[2][0] = angle.sin();
+        m.data[2][2] = angle.cos();
+        m
+    }
+
+    pub fn rotate_z(&mut self, angle: f32) -> Matrix {
+        // | cos(a)  sin(a) 0   0 |
+        // | -sin(a)  cos(a)  0   0 |
+        // | 0       0       1   0 |
+        // | 0       0       0   1 |
+        let mut m = Matrix::identity();
+        m.data[0][0] = angle.cos();
+        m.data[0][1] = angle.sin();
+        m.data[1][0] = -angle.sin();
+        m.data[1][1] = angle.cos();
+        m
     }
 }

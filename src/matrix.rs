@@ -130,13 +130,16 @@ impl Matrix {
         m
     }
 
-    pub fn make_perspetive(&mut self, fov: f32, aspect_ratio: f32, near: f32, far: f32) -> Matrix {
-        let mut m = Matrix::identity();
+    pub fn make_perspetive(fov: f32, aspect_ratio: f32, near: f32, far: f32) -> Matrix {
+        let mut m = Matrix {
+            data: [[0.0; 4]; 4],
+        };
         m.data[0][0] = aspect_ratio * (1.0 / (fov / 2.0).tan());
         m.data[1][1] = 1.0 / (fov / 2.0).tan();
         m.data[2][2] = far / (far - near);
         m.data[2][3] = (-far * near) / (far - near);
         m.data[3][2] = 1.0;
+
         m
     }
 

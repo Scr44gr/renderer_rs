@@ -21,7 +21,7 @@ pub enum CullMethod {
     CullBackface,
 }
 
-pub const WINDOW_WIDTH: u32 = 1080;
+pub const WINDOW_WIDTH: u32 = 1020;
 pub const WINDOW_HEIGHT: u32 = 720;
 pub const FRAMES_PER_SECOND: u32 = 60;
 

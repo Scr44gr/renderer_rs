@@ -15,6 +15,12 @@ mod mesh;
 mod triangle;
 mod vector;
 
+const LIGHT_DIRECTION: Vec3 = Vec3 {
+    x: 0.0,
+    y: 0.0,
+    z: 1.0,
+};
+
 struct Renderer {
     sdl_context: Sdl,
     canvas: Canvas<Window>,
@@ -25,6 +31,7 @@ struct Renderer {
     mesh: mesh::Mesh,
     render_method: display::RenderMethod,
     cull_method: display::CullMethod,
+    apply_light: bool,
     projection_matrix: Matrix,
 }
 
@@ -38,7 +45,7 @@ impl Renderer {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let color_buffer = vec![0; (display::WINDOW_WIDTH * display::WINDOW_HEIGHT * 5) as usize];
+        let color_buffer = vec![0; (display::WINDOW_WIDTH * display::WINDOW_HEIGHT * 3) as usize];
         let mesh = mesh::Mesh::load_from_file("./assets/f22.obj");
         //let mesh = mesh::Mesh::new_cube();
 
@@ -48,7 +55,7 @@ impl Renderer {
         let near = 1.0;
         let far = 100.0;
 
-        let projection_matrix = Matrix::identity().make_perspetive(fov, aspect_ratio, near, far);
+        let projection_matrix = Matrix::make_perspetive(fov, aspect_ratio, near, far);
         Renderer {
             sdl_context,
             canvas,
@@ -59,6 +66,7 @@ impl Renderer {
             mesh: mesh,
             render_method: display::RenderMethod::Wireframe,
             cull_method: display::CullMethod::None,
+            apply_light: true,
             projection_matrix: projection_matrix,
         }
     }
@@ -83,6 +91,8 @@ impl Renderer {
                     // Cull methods
                     Keycode::Num5 => self.cull_method = display::CullMethod::None,
                     Keycode::Num6 => self.cull_method = display::CullMethod::CullBackface,
+                    Keycode::L => self.apply_light = !self.apply_light,
+                    // to move the camera
                     _ => {}
                 },
                 _ => {}
@@ -93,7 +103,7 @@ impl Renderer {
         // change the mesh roration/scale values per animation frame
         self.mesh.rotation.x += 0.02;
         self.mesh.rotation.y += 0.02;
-        //self.mesh.rotation.z += 0.01;
+        self.mesh.rotation.z += 0.01;
         self.mesh.translation.z = 5.0;
 
         // Create Scale matrix that will be used to multiply the mesh vertices
@@ -133,19 +143,25 @@ impl Renderer {
                 // Store transformed vertex
                 transformed_vertices[j] = transformed_vertex;
             }
+            let vector_a = Vec3::from_vec4(transformed_vertices[0]); //     A
+            let vector_b = Vec3::from_vec4(transformed_vertices[1]); //   /   \
+            let vector_c = Vec3::from_vec4(transformed_vertices[2]); //  C-----B
 
+            // Calculate Normal
+            let vector_ab = (vector_b - vector_a).normalize();
+            let vector_ac = (vector_c - vector_a).normalize();
+            let normal = vector_ab.cross(vector_ac).normalize();
+            let mut light_color = cube_face.color;
+
+            if self.apply_light {
+                let light_direction = LIGHT_DIRECTION.normalize();
+                let light_intensity = -normal.dot(light_direction);
+
+                // clamp light intensity to make sure it's between 0 and 1
+                let light_intensity = light_intensity.clamp(0.0, 1.0);
+                light_color = self.light_apply_intensity(light_intensity, cube_face.color);
+            }
             if self.cull_method == display::CullMethod::CullBackface {
-                // Applying backface culling
-                // Getting vectors
-                let vector_a = Vec3::from_vec4(transformed_vertices[0]); //     A
-                let vector_b = Vec3::from_vec4(transformed_vertices[1]); //   /   \
-                let vector_c = Vec3::from_vec4(transformed_vertices[2]); //  C-----B
-
-                // Calculate Normal
-                let vector_ab = (vector_b - vector_a).normalize();
-                let vector_ac = (vector_c - vector_a).normalize();
-                let normal = vector_ab.cross(vector_ac).normalize();
-
                 // Calculate Camera Ray
                 let camera_ray = self.camera_position - vector_a;
 
@@ -157,6 +173,7 @@ impl Renderer {
             }
             // Projecting 3D points to 2D
             let mut projected_points = [Vec4::new(0.0, 0.0, 0.0, 0.0); 3];
+
             for j in 0..3 {
                 projected_points[j] = self
                     .projection_matrix
@@ -180,14 +197,26 @@ impl Renderer {
                     Vec2::new(projected_points[1].x, projected_points[1].y),
                     Vec2::new(projected_points[2].x, projected_points[2].y),
                 ],
-                color: self.mesh.faces[i].color,
+                color: light_color,
                 avg_depth: avg_depth,
             };
+            // apply light intensity to triangle color
             self.triangles_to_render.push(projected_triangle);
         }
         // Sorting triangles by depth
         self.triangles_to_render
             .sort_by(|a, b| b.avg_depth.partial_cmp(&a.avg_depth).unwrap());
+    }
+
+    pub fn light_apply_intensity(
+        &mut self,
+        intensity: f32,
+        color: sdl2::pixels::Color,
+    ) -> sdl2::pixels::Color {
+        let r = (color.r as f32 * intensity) as u8;
+        let g = (color.g as f32 * intensity) as u8;
+        let b = (color.b as f32 * intensity) as u8;
+        sdl2::pixels::Color::RGBA(r, g, b, 255)
     }
 
     pub fn render(&mut self) {

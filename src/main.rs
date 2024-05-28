@@ -1,32 +1,31 @@
 extern crate sdl2;
 
 use display::FRAMES_PER_SECOND;
+use matrix::Matrix;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::Sdl;
-use std::time::Duration;
+use std::{f32::consts::PI, time::Duration};
 use vector::{Vec2, Vec3, Vec4};
-use matrix::Matrix;
 mod display;
+mod matrix;
 mod mesh;
 mod triangle;
 mod vector;
-mod matrix;
-
 
 struct Renderer {
     sdl_context: Sdl,
     canvas: Canvas<Window>,
     is_running: bool,
-    fov_factor: f32,
     color_buffer: Vec<u8>,
     triangles_to_render: Vec<triangle::Triangle>,
     camera_position: Vec3,
     mesh: mesh::Mesh,
     render_method: display::RenderMethod,
     cull_method: display::CullMethod,
+    projection_matrix: Matrix,
 }
 
 impl Renderer {
@@ -40,29 +39,28 @@ impl Renderer {
             .unwrap();
 
         let color_buffer = vec![0; (display::WINDOW_WIDTH * display::WINDOW_HEIGHT * 5) as usize];
-        //let mesh = mesh::Mesh::load_from_file("./assets/f22.obj");
-        let mesh = mesh::Mesh::new_cube();
+        let mesh = mesh::Mesh::load_from_file("./assets/f22.obj");
+        //let mesh = mesh::Mesh::new_cube();
 
+        // Initialize projection matrix
+        let fov = PI / 3.0; // 60 degrees
+        let aspect_ratio = display::WINDOW_HEIGHT as f32 / display::WINDOW_WIDTH as f32;
+        let near = 1.0;
+        let far = 100.0;
+
+        let projection_matrix = Matrix::identity().make_perspetive(fov, aspect_ratio, near, far);
         Renderer {
             sdl_context,
             canvas,
             color_buffer,
             is_running: true,
-            fov_factor: 700.0,
             camera_position: Vec3::new(0.0, 0.0, 0.0),
             triangles_to_render: Vec::new(),
             mesh: mesh,
             render_method: display::RenderMethod::Wireframe,
             cull_method: display::CullMethod::None,
+            projection_matrix: projection_matrix,
         }
-    }
-
-    pub fn project(&mut self, point: vector::Vec3) -> vector::Vec2 {
-        let projected_point = vector::Vec2 {
-            x: (self.fov_factor * point.x) / point.z,
-            y: (self.fov_factor * point.y) / point.z,
-        };
-        projected_point
     }
 
     pub fn process_input(&mut self) {
@@ -76,13 +74,15 @@ impl Renderer {
                 } => match keycode {
                     Keycode::Escape => self.is_running = false,
                     // Render methods
-                    Keycode::Kp1 => self.render_method = display::RenderMethod::Wireframe,
-                    Keycode::Kp2 => self.render_method = display::RenderMethod::WireframeVertex,
-                    Keycode::Kp3 => self.render_method = display::RenderMethod::FillTriangle,
-                    Keycode::Kp4 => self.render_method = display::RenderMethod::FillTriangleWireframe,
+                    Keycode::Num1 => self.render_method = display::RenderMethod::Wireframe,
+                    Keycode::Num2 => self.render_method = display::RenderMethod::WireframeVertex,
+                    Keycode::Num3 => self.render_method = display::RenderMethod::FillTriangle,
+                    Keycode::Num4 => {
+                        self.render_method = display::RenderMethod::FillTriangleWireframe
+                    }
                     // Cull methods
-                    Keycode::Kp5 => self.cull_method = display::CullMethod::None,
-                    Keycode::Kp6 => self.cull_method = display::CullMethod::CullBackface,
+                    Keycode::Num5 => self.cull_method = display::CullMethod::None,
+                    Keycode::Num6 => self.cull_method = display::CullMethod::CullBackface,
                     _ => {}
                 },
                 _ => {}
@@ -98,26 +98,17 @@ impl Renderer {
 
         // Create Scale matrix that will be used to multiply the mesh vertices
 
-        let mut scale_matrix = Matrix::new().scale(
-            self.mesh.scale.x,
-            self.mesh.scale.y,
-            self.mesh.scale.z,
-        );
+        let mut scale_matrix =
+            Matrix::new().scale(self.mesh.scale.x, self.mesh.scale.y, self.mesh.scale.z);
 
         let mut translation_matrix = Matrix::new().translate(
             self.mesh.translation.x,
             self.mesh.translation.y,
             self.mesh.translation.z,
         );
-        let mut rotation_matrix_x = Matrix::new().rotate_x(
-            self.mesh.rotation.x,
-        );
-        let mut rotation_matrix_y = Matrix::new().rotate_y(
-            self.mesh.rotation.y,
-        );
-        let mut rotation_matrix_z = Matrix::new().rotate_z(
-            self.mesh.rotation.z,
-        );
+        let mut rotation_matrix_x = Matrix::new().rotate_x(self.mesh.rotation.x);
+        let mut rotation_matrix_y = Matrix::new().rotate_y(self.mesh.rotation.y);
+        let mut rotation_matrix_z = Matrix::new().rotate_z(self.mesh.rotation.z);
 
         let num_faces = self.mesh.faces.len();
         for i in 0..num_faces {
@@ -140,7 +131,7 @@ impl Renderer {
                 transformed_vertex = rotation_matrix_z.multiply(&mut transformed_vertex);
                 transformed_vertex = translation_matrix.multiply(&mut transformed_vertex);
                 // Store transformed vertex
-                transformed_vertices[j] = transformed_vertex; 
+                transformed_vertices[j] = transformed_vertex;
             }
 
             if self.cull_method == display::CullMethod::CullBackface {
@@ -165,13 +156,18 @@ impl Renderer {
                 }
             }
             // Projecting 3D points to 2D
-            let mut projected_points = [Vec2::new(0.0, 0.0); 3];
+            let mut projected_points = [Vec4::new(0.0, 0.0, 0.0, 0.0); 3];
             for j in 0..3 {
-                let mut projected_point = self.project(Vec3::from_vec4(transformed_vertices[j]));
+                projected_points[j] = self
+                    .projection_matrix
+                    .multiply_vec4_projection(&transformed_vertices[j]);
+                // Scaling projected point
+                projected_points[j].x *= display::WINDOW_WIDTH as f32 / 2.0;
+                projected_points[j].y *= display::WINDOW_HEIGHT as f32 / 2.0;
 
-                projected_point.x += display::WINDOW_WIDTH as f32 / 2.0;
-                projected_point.y += display::WINDOW_HEIGHT as f32 / 2.0;
-                projected_points[j] = projected_point;
+                // Transforming projected point to screen space
+                projected_points[j].x += display::WINDOW_WIDTH as f32 / 2.0;
+                projected_points[j].y += display::WINDOW_HEIGHT as f32 / 2.0;
             }
             // Calculating average depth of triangle
             let avg_depth =
@@ -179,14 +175,19 @@ impl Renderer {
                     / transformed_vertices.len() as f32;
 
             let projected_triangle: triangle::Triangle = triangle::Triangle {
-                points: projected_points,
+                points: [
+                    Vec2::new(projected_points[0].x, projected_points[0].y),
+                    Vec2::new(projected_points[1].x, projected_points[1].y),
+                    Vec2::new(projected_points[2].x, projected_points[2].y),
+                ],
                 color: self.mesh.faces[i].color,
                 avg_depth: avg_depth,
             };
             self.triangles_to_render.push(projected_triangle);
         }
         // Sorting triangles by depth
-        self.triangles_to_render.sort_by(|a, b| b.avg_depth.partial_cmp(&a.avg_depth).unwrap());
+        self.triangles_to_render
+            .sort_by(|a, b| b.avg_depth.partial_cmp(&a.avg_depth).unwrap());
     }
 
     pub fn render(&mut self) {

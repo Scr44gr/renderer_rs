@@ -5,4 +5,5 @@ A 3D renderer using SDL in rust, following the *[Gustavo Pezzi](https://pikuma.c
 
 ## Current progress
 
-![f22Real](https://github.com/Scr44gr/renderer_rs/assets/26069007/0b6cd67a-821a-4530-961d-bd672a8055a0)
+
+![F22](https://github.com/Scr44gr/renderer_rs/assets/26069007/a3a506b8-2055-4e71-90f9-b326ccfd3980)
